@@ -82,7 +82,7 @@ def main():
     elif options.mode == "backtest":
         config = _config_by_algo(options.algo)
         _set_logging_by_algo(logging.DEBUG, logging.DEBUG, options.algo, "backtestlog")
-        execute_backtest(options.algo, config, online=True)
+        execute_backtest(options.algo, config, online=False)
         #execute_backtest(options.algo, config)
     elif options.mode == "save_test_data":
         # This is used to export the test data

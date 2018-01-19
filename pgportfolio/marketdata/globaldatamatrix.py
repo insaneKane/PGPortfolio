@@ -10,12 +10,14 @@ from pgportfolio.constants import *
 import sqlite3
 from datetime import datetime
 import logging
-
+import time
 
 class HistoryManager:
     # if offline ,the coin_list could be None
     # NOTE: return of the sqlite results is a list of tuples, each tuple is a row
-    def __init__(self, coin_number, end, volume_average_days=1, volume_forward=0, online=True):
+    def __init__(self, coin_number, end, volume_average_days=1, volume_forward=0, online=True, new_data=False):
+        #current_time = datetime.now()
+        #end = current_time.strftime("%Y/%m/%d %H:%M")
         self.initialize_db()
         self.__storage_period = FIVE_MINUTES  # keep this as 300
         self._coin_number = coin_number
@@ -45,8 +47,8 @@ class HistoryManager:
         :return a numpy ndarray whose axis is [feature, coin, time]
         """
         return self.get_global_panel(start, end, period, features).values
-
-    def get_global_panel(self, start, end, period=300, features=('close',)):
+    
+    def get_global_panel(self, start, end, period=300, features=('close',), new_data=False):
         """
         :param start/end: linux timestamp in seconds
         :param period: time interval of each data access point
@@ -55,8 +57,15 @@ class HistoryManager:
         """
         start = int(start - (start%period))
         end = int(end - (end%period))
-        coins = self.select_coins(start=end - self.__volume_forward - self.__volume_average_days * DAY,
-                                  end=end-self.__volume_forward)
+        if new_data:
+            now = time.time()
+            end = int(now)
+            end = int(end - (end%period))
+        print("end : {}".format(datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
+        #input("<-------------------PANEL --------------------->\n start : {} end : {}".format(
+        #      datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M"), datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
+        #coins = self.select_coins(start=end - self.__volume_forward - self.__volume_average_days * DAY, end=end-self.__volume_forward)
+        coins = self.select_coins(start=end - self.__volume_forward - self.__volume_average_days * DAY, end=end-self.__volume_forward)
         self.__coins = coins
         for coin in coins:
             self.update_data(start, end, coin)
@@ -70,10 +79,11 @@ class HistoryManager:
 
         time_index = pd.to_datetime(list(range(start, end+1, period)),unit='s')
         panel = pd.Panel(items=features, major_axis=coins, minor_axis=time_index, dtype=np.float32)
-
+        #print(panel.axes)
         connection = sqlite3.connect(DATABASE_DIR)
         try:
             for row_number, coin in enumerate(coins):
+                #input("row_number : {} coin : {}".format(row_number, coin))
                 for feature in features:
                     # NOTE: transform the start date to end date
                     if feature == "close":
@@ -114,6 +124,7 @@ class HistoryManager:
                     serial_data = pd.read_sql_query(sql, con=connection,
                                                     parse_dates=["date_norm"],
                                                     index_col="date_norm")
+                    #input("Serial Data : {}".format(serial_data))
                     panel.loc[feature, coin, serial_data.index] = serial_data.squeeze()
                     panel = panel_fillna(panel, "both")
         finally:
@@ -142,6 +153,7 @@ class HistoryManager:
                 connection.close()
             coins = []
             for tuple in coins_tuples:
+                #input("CoinTuple : {}".format(tuple))
                 coins.append(tuple[0])
         else:
             coins = list(self._coin_list.topNVolume(n=self._coin_number).index)

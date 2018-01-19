@@ -14,6 +14,9 @@ import tensorflow as tf
 from pgportfolio.learn.nnagent import NNAgent
 from pgportfolio.marketdata.datamatrices import DataMatrices
 import logging
+from datetime import datetime
+import time
+
 Result = collections.namedtuple("Result",
                                 [
                                  "test_pv",
@@ -53,8 +56,9 @@ class TraderTrainer:
         config["input"]["fake_data"] = fake_data
 
         self._matrix = DataMatrices.create_from_config(config)
-
         self.test_set = self._matrix.get_test_set()
+        self.last_info = self._matrix.get_last_info()
+
         if not config["training"]["fast_train"]:
             self.training_set = self._matrix.get_training_set()
         self.upperbound_validation = 1
@@ -70,6 +74,13 @@ class TraderTrainer:
                     self._agent = NNAgent(config, restore_dir, device)
             else:
                 self._agent = NNAgent(config, restore_dir, device)
+
+    def update_matrix(self):
+        now = time.time()
+        now_ymdhm = datetime.fromtimestamp(now).strftime("%Y/%m/%d %H:%M")
+        self.config['input']['end_date'] = now_ymdhm
+        self._matrix = DataMatrices.create_from_config(self.config, _new_data=True)
+        self.test_set = self._matrix.get_test_set()
 
     def _evaluate(self, set_name, *tensors):
         if set_name == "test":

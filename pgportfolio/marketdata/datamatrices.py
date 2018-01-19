@@ -8,6 +8,7 @@ import logging
 from pgportfolio.tools.configprocess import parse_time
 from pgportfolio.tools.data import get_volume_forward, get_type_list
 import pgportfolio.marketdata.replaybuffer as rb
+from datetime import datetime
 
 MIN_NUM_PERIOD = 3
 
@@ -15,7 +16,7 @@ MIN_NUM_PERIOD = 3
 class DataMatrices:
     def __init__(self, start, end, period, batch_size=50, volume_average_days=30, buffer_bias_ratio=0,
                  market="poloniex", coin_filter=1, window_size=50, feature_number=3, test_portion=0.15,
-                 portion_reversed=False, online=False, is_permed=False):
+                 portion_reversed=False, online=False, is_permed=False, new_data=False):
         """
         :param start: Unix time
         :param end: Unix time
@@ -34,32 +35,36 @@ class DataMatrices:
         """
         start = int(start)
         self.__end = int(end)
-
+        #input("END : {}".format(self.__end))
         # assert window_size >= MIN_NUM_PERIOD
         self.__coin_no = coin_filter
         type_list = get_type_list(feature_number)
         self.__features = type_list
         self.feature_number = feature_number
         volume_forward = get_volume_forward(self.__end-start, test_portion, portion_reversed)
+        #input("Start : {} End : {} Volume Forward : {}".format(datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M"), datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M"), volume_forward))
         self.__history_manager = gdm.HistoryManager(coin_number=coin_filter, end=self.__end,
                                                     volume_average_days=volume_average_days,
-                                                    volume_forward=volume_forward, online=online)
+                                                    volume_forward=volume_forward, online=online, new_data=new_data)
         if market == "poloniex":
             self.__global_data = self.__history_manager.get_global_panel(start,
                                                                          self.__end,
                                                                          period=period,
-                                                                         features=type_list)
+                                                                         features=type_list, new_data=new_data)
         else:
             raise ValueError("market {} is not valid".format(market))
+        print("LAST : {}".format(self.__global_data.values[:, :, -1]))
         self.__period_length = period
         # portfolio vector memory, [time, assets]
         self.__PVM = pd.DataFrame(index=self.__global_data.minor_axis,
                                   columns=self.__global_data.major_axis)
-        self.__PVM = self.__PVM.fillna(1.0 / self.__coin_no)
+        self.__PVM = self.__PVM.fillna(1.0 / self.__coin_no) #Fill NaN Values
 
+        #input("Data :\n {} \nPortfolio Vector : \n{}".format(self.__global_data, self.__PVM))
+        #input("Data :\n {}".format(self.__global_data))
         self._window_size = window_size
         self._num_periods = len(self.__global_data.minor_axis)
-        self.__divide_data(test_portion, portion_reversed)
+        self.__divide_data(test_portion, portion_reversed) #Split data to Train/Test with time periods
 
         self._portion_reversed = portion_reversed
         self.__is_permed = is_permed
@@ -84,14 +89,16 @@ class DataMatrices:
         return self.__PVM
 
     @staticmethod
-    def create_from_config(config):
+    def create_from_config(config, _new_data=False):
         """main method to create the DataMatrices in this project
         @:param config: config dictionary
         @:return: a DataMatrices object
         """
+        #input("End : {}".format())
         config = config.copy()
         input_config = config["input"]
         train_config = config["training"]
+        #input("Start : {} End : {}".format(input_config["start_date"], input_config["end_date"]))
         start = parse_time(input_config["start_date"])
         end = parse_time(input_config["end_date"])
         return DataMatrices(start=start,
@@ -108,7 +115,8 @@ class DataMatrices:
                             volume_average_days=input_config["volume_average_days"],
                             test_portion=input_config["test_portion"],
                             portion_reversed=input_config["portion_reversed"],
-                            )
+                            new_data=_new_data,
+                           )
 
     @property
     def global_matrix(self):
@@ -146,6 +154,24 @@ class DataMatrices:
     def get_training_set(self):
         return self.__pack_samples(self._train_ind[:-self._window_size])
 
+    def get_current_time(self, indexs):
+        t = self.__global_data.minor_axis[indexs]
+
+    def get_last_info(self):
+        last_matrix = self.__global_data.values[:, :, -self._window_size:]
+        last_w = self.__PVM.values[-2, :]
+        t = self.__global_data.minor_axis[-1]
+        print("TIMES : {}".format(t))
+        def setw(w):
+            total_size = len(self.__global_data.values)
+            indexs = np.array([index for index in range(total_size-window_size, total_size)])
+            self.__PVM.iloc[indexs, :] = w
+
+        y = last_matrix[:, :, -1] / last_matrix[0, :, -2]
+        #input("first_shape_M : {} second_shape_M : {}".format( M[:, :, :, -1].shape, M[:, 0, None, :, -2].shape))
+        return {"X": last_matrix, "y": y, "last_w" : last_w, "setw": setw}
+
+
     def next_batch(self):
         """
         @:return: the next batch of training sample. The sample is a dictionary
@@ -159,13 +185,18 @@ class DataMatrices:
     def __pack_samples(self, indexs):
         indexs = np.array(indexs)
         last_w = self.__PVM.values[indexs-1, :]
-
+        #t = self.__global_data.minor_axis[indexs]
+        #print("TIMES : {}".format(t))
         def setw(w):
+            #input("Indexes : {}".format(indexs))
             self.__PVM.iloc[indexs, :] = w
         M = [self.get_submatrix(index) for index in indexs]
         M = np.array(M)
+        #input("Shape : {}".format(M.shape))
         X = M[:, :, :, :-1]
+        #input("Shape : {}".format(X.shape))
         y = M[:, :, :, -1] / M[:, 0, None, :, -2]
+        #input("first_shape_M : {} second_shape_M : {}".format( M[:, :, :, -1].shape, M[:, 0, None, :, -2].shape))
         return {"X": X, "y": y, "last_w": last_w, "setw": setw}
 
     # volume in y is the volume in next access period
@@ -180,12 +211,13 @@ class DataMatrices:
             portion_split = (portions * self._num_periods).astype(int)
             indices = np.arange(self._num_periods)
             self._test_ind, self._train_ind = np.split(indices, portion_split)
+            #input("indices : {}".format(self._test_ind))
         else:
             portions = np.array([train_portion]) / s
             portion_split = (portions * self._num_periods).astype(int)
             indices = np.arange(self._num_periods)
             self._train_ind, self._test_ind = np.split(indices, portion_split)
-
+            #input("not portion indices : {}".format(self._test_ind))
         self._train_ind = self._train_ind[:-(self._window_size + 1)]
         # NOTE(zhengyao): change the logic here in order to fit both
         # reversed and normal version

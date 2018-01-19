@@ -11,14 +11,17 @@ ALGOS = {"crp": crp.CRP, "ons": ons.ONS, "olmar": olmar.OLMAR, "up": up.UP,
          "cwmr": cwmr_std.CWMR_STD, "eg": eg.EG, "sp": sp.SP, "ubah": ubah.UBAH,
          "wmamr": wmamr.WMAMR}
 
-def execute_backtest(algo, config):
+def execute_backtest(algo, config, online=False):
     """
     @:param algo: string representing the name the name of algorithms
     @:return: numpy array of portfolio changes
     """
     agent, agent_type, net_dir = _construct_agent(algo)
     backtester = BackTest(config, agent=agent, agent_type=agent_type, net_dir=net_dir)
-    backtester.start_trading()
+    if not online:
+        backtester.start_trading()
+    else:
+        backtester.online_trading_with_nn()
     return backtester.test_pc_vector
 
 

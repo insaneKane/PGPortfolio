@@ -29,6 +29,10 @@ class RollingTrainer(TraderTrainer):
     def rolling_training_steps(self):
         return self.config["trading"]["rolling_training_steps"]
 
+    def update_data(self):
+        self.update_matrix()
+        print("Update Matrix With new Data")
+
     def __rolling_logging(self):
         fast_train = self.train_config["fast_train"]
         if not fast_train:
@@ -57,3 +61,8 @@ class RollingTrainer(TraderTrainer):
                 x, y, last_w, w = self.next_batch()
                 self._agent.train(x, y, last_w, w)
             self.__rolling_logging()
+
+    def online_rolling_train(self, batch_data):
+        x, y, last_w, w = batch_data[0]
+        self._agent.train(x, y, last_w, w)
+        self.__rolling_logging()

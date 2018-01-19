@@ -37,6 +37,7 @@ class Poloniex:
         self.marketOrders = lambda pair='all', depth=10:\
             self.api('returnOrderBook', {'currencyPair':pair, 'depth':depth})
         self.marketChart = lambda pair, period=day, start=time.time()-(week*1), end=time.time(): self.api('returnChartData', {'currencyPair':pair, 'period':period, 'start':start, 'end':end})
+        #self.marketChart = lambda pair, period=day, start=time.time()-(week*1), end=time.time(): self.api('returnChartData', {'currencyPair':pair, 'period':period, 'start':start, 'end':end})
         self.marketTradeHist = lambda pair: self.api('returnTradeHistory',{'currencyPair':pair}) # NEEDS TO BE FIXED ON Poloniex
 
     #####################

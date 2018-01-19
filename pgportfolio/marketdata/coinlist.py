@@ -10,7 +10,7 @@ from pgportfolio.constants import *
 
 
 class CoinList(object):
-    def __init__(self, end, volume_average_days=1, volume_forward=0):
+    def __init__(self, end, volume_average_days=1, volume_forward=0, new_data=False):
         self._polo = Poloniex()
         # connect the internet to accees volumes
         vol = self._polo.marketVolume()
@@ -19,13 +19,14 @@ class CoinList(object):
         coins = []
         volumes = []
         prices = []
-
+        print("Start Parsing : ")
         logging.info("select coin online from %s to %s" % (datetime.fromtimestamp(end-(DAY*volume_average_days)-
                                                                                   volume_forward).
                                                            strftime('%Y-%m-%d %H:%M'),
                                                            datetime.fromtimestamp(end-volume_forward).
                                                            strftime('%Y-%m-%d %H:%M')))
         for k, v in vol.items():
+            #input("K : {}\nV : {}\n ticker : {}".format(k, v, ticker[k]))
             if k.startswith("BTC_") or k.endswith("_BTC"):
                 pairs.append(k)
                 for c, val in v.items():
@@ -37,7 +38,14 @@ class CoinList(object):
                             coins.append(c)
                             prices.append(float(ticker[k]['last']))
                     else:
-                        volumes.append(self.__get_total_volume(pair=k, global_end=end,
+                        if not new_data:
+                            volumes.append(self.__get_total_volume(pair=k, global_end=end,
+                                                               days=volume_average_days,
+                                                               forward=volume_forward))
+                        else:
+                            #TODO Add New Data
+                            #now = time.time()
+                            volumes.append(self.__get_total_volume(pair=k, global_end=end,
                                                                days=volume_average_days,
                                                                forward=volume_forward))
         self._df = pd.DataFrame({'coin': coins, 'pair': pairs, 'volume': volumes, 'price':prices})
@@ -62,9 +70,11 @@ class CoinList(object):
     def __get_total_volume(self, pair, global_end, days, forward):
         start = global_end-(DAY*days)-forward
         end = global_end-forward
+        #print("start : {} end : {}".format(datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M'), datetime.fromtimestamp(end).strftime('%Y-%m-%d %H:%M')))
         chart = self.get_chart_until_success(pair=pair, period=DAY, start=start, end=end)
         result = 0
         for one_day in chart:
+            #input("dates :{} \ndata : {} ".format(datetime.fromtimestamp(one_day['date']).strftime('%Y-%m-%d %H:%M'),one_day))
             if pair.startswith("BTC_"):
                 result += one_day['volume']
             else:

@@ -16,7 +16,7 @@ class Trader:
         self._total_steps = total_steps
         self._period = waiting_period
         self._agent_type = agent_type
-
+        self.config = config #My Addition TODO can cause error
         if agent_type == "traditional":
             config["input"]["feature_number"] = 1
             config["input"]["norm_method"] = "relative"
@@ -38,7 +38,7 @@ class Trader:
         self._commission_rate = config["trading"]["trading_consumption"]
         self._fake_ratio = config["input"]["fake_ratio"]
         self._asset_vector = np.zeros(self._coin_number+1)
-
+        self.__period = config['input']['global_period']
         self._last_omega = np.zeros((self._coin_number+1,))
         self._last_omega[0] = 1.0
 
@@ -90,10 +90,12 @@ class Trader:
         starttime = time.time()
         omega = self._agent.decide_by_history(self.generate_history_matrix(),
                                               self._last_omega.copy())
+        logging.info("Last Omega : {}\nNew Omega : {}".format(self._last_omega, omega))
         self.trade_by_strategy(omega)
         if self._agent_type == "nn":
             self.rolling_train()
         if not self.__class__.__name__=="BackTest":
+            print("LAST OMEGA CHANGE")
             self._last_omega = omega.copy()
         logging.info('total assets are %3f BTC' % self._total_capital)
         logging.debug("="*30)
@@ -116,8 +118,57 @@ class Trader:
                     time.sleep(sleeptime)
             else:
                 while self._steps < self._total_steps:
+                    #print("step : {}".format(self.steps))
                     self.__trade_body()
         finally:
             if self._agent_type=="nn":
                 self._agent.recycle()
             self.finish_trading()
+
+    #TODO My implementation
+    def online_trading_with_nn(self):
+        flag = True
+        update_step_count = 0
+        X = []
+        y = []
+        last_w = []
+        w = []
+        while flag:
+            #time.sleep(30)
+            try:
+                self._current_error_state = 'S000'
+                starttime = time.time()
+                inputs = self.generate_realtime_history_matrix()
+                #omega = self._agent.decide_by_history(inputs, self._rolling_trader.last_info["last_w"].copy())
+                omega = self._agent.decide_by_history(inputs, self._last_omega.copy())
+                #logging.info("Last Omega : {}\nNew Omega : {}".format(self._last_omega, omega))
+                #TODO Sleep, Update, Get New Data and Y
+                print("WAIT_UNTIL_UPDATE")
+                time.sleep(self.__period - 120)
+                print("UPDATING DATA")
+                self._rolling_trainer.update_data()
+                self.trade_by_online_strategy(omega)
+                X.append(inputs.copy())
+                y.append(omega.copy())
+                last_w.append(self._last_omega.copy())
+                w.append(0)
+                #TODO NEED TO SET w somehow
+                if self._agent_type == "nn" and update_step_count == self._rolling_trainer.rolling_training_steps: 
+                    batch = np.array([X, y, last_w, w])
+                    X = []
+                    y = []
+                    last_w = []
+                    w = []
+                    self.online_rolling_train(np.array(batch))
+                if not self.__class__.__name__=="BackTest":
+                    print("Switch is REAL")
+                self._last_omega = omega.copy()
+                logging.info('total assets are %3f BTC' % self._total_capital)
+                logging.debug("="*30)
+                #trading_time = time.time() - starttime
+                #if trading_time < self._period:
+                #    logging.info("sleep for %s seconds" % (self._period - trading_time))
+                #sleep_time = self._period - trading_time
+            except KeyboardInterrupt:
+                self._agent.recycle()
+                self.finish_trading()
