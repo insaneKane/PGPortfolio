@@ -165,7 +165,9 @@ class NNAgent:
                                                     self.__y: y,
                                                     self.__net.previous_w: last_w,
                                                     self.__net.input_num: x.shape[0]})
-        setw(results[-1][:, 1:])
+
+        #input("EVALULATE TIME\n Shape : {} Update_value : {}".format(np.array(results[-1]).shape, results[-1][:, 1:]))
+        #setw(results[-1][:, 1:])
         return results[:-1]
 
     # save the variables path including file name

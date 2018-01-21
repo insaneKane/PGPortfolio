@@ -104,9 +104,9 @@ def count_periods(start, end, period_length):
     return (int(end)-int(start)) // period_length
 
 
-def get_volume_forward(time_span, portion, portion_reversed):
+def get_volume_forward(time_span, portion, portion_reversed, new_data=False):
     volume_forward = 0
-    if not portion_reversed:
+    if not portion_reversed and not new_data:
         volume_forward = time_span*portion
     return volume_forward
 

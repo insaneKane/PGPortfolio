@@ -61,7 +61,7 @@ class HistoryManager:
             now = time.time()
             end = int(now)
             end = int(end - (end%period))
-        print("end : {}".format(datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
+        #print("end : {}".format(datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
         #input("<-------------------PANEL --------------------->\n start : {} end : {}".format(
         #      datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M"), datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
         #coins = self.select_coins(start=end - self.__volume_forward - self.__volume_average_days * DAY, end=end-self.__volume_forward)
@@ -183,7 +183,7 @@ class HistoryManager:
             cursor = connection.cursor()
             min_date = cursor.execute('SELECT MIN(date) FROM History WHERE coin=?;', (coin,)).fetchall()[0][0]
             max_date = cursor.execute('SELECT MAX(date) FROM History WHERE coin=?;', (coin,)).fetchall()[0][0]
-
+       
             if min_date==None or max_date==None:
                 self.__fill_data(start, end, coin, cursor)
             else:

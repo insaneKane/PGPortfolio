@@ -11,7 +11,7 @@ class BackTest(trader.Trader):
         trader.Trader.__init__(self, 0, config, 0, net_dir,
                                initial_BTC=1, agent=agent, agent_type=agent_type)
         self.config = config #My Addition can cause error TODO
-        print("agent_type : {}".format(agent_type))
+        
         if agent_type == "nn":
             data_matrices = self._rolling_trainer.data_matrices
         elif agent_type == "traditional":
@@ -64,12 +64,16 @@ class BackTest(trader.Trader):
     def __get_matrix_last_X(self):
         #return self.__test_set["X"][-1]
         return self._rolling_trainer.last_info["X"]
+
     def __get_matrix_last_y(self):
-        return self._rolling_trainer.last_info["y"][0]
+        return self._rolling_trainer.last_info["y"][0, :]
         #return self.__test_set["y"][-1, 0, :]
 
     def rolling_train(self, online_sample=None):
         self._rolling_trainer.rolling_train()
+
+    def online_rolling_train(self, batch_data):
+        self._rolling_trainer.online_rolling_train(batch_data)
 
     '''Update Rolling Trainer with New Data'''
     def update_matrix(self):
@@ -80,7 +84,7 @@ class BackTest(trader.Trader):
        
     def generate_history_matrix(self):
         time = self._rolling_trainer.data_matrices.get_current_time(self._steps)
-        input("TIME : {}".format(time))
+        #input("TIME : {}".format(time))
         inputs = self.__get_matrix_X()
         if self._agent_type == "traditional":
             inputs = np.concatenate([np.ones([1, 1, inputs.shape[2]]), inputs], axis=1)
@@ -100,6 +104,8 @@ class BackTest(trader.Trader):
     def trade_by_strategy(self, omega):
         logging.info("the step is {}".format(self._steps))
         logging.debug("the raw omega is {}".format(omega))
+        outputs = self.__get_matrix_y()
+        #input(outputs.shape)
         future_price = np.concatenate((np.ones(1), self.__get_matrix_y()))
         logging.info("future_price : {}".format(future_price))
         pv_after_commission = calculate_pv_after_commission(omega, self._last_omega, self._commission_rate)
@@ -114,6 +120,8 @@ class BackTest(trader.Trader):
     def trade_by_online_strategy(self, omega):
         #logging.info("the step is {}".format(self._steps))
         logging.debug("LAST OMEGA IS {}".format(omega))
+        real_output = self.__get_matrix_last_y()
+        #input(real_output.shape)
         future_price = np.concatenate((np.ones(1), self.__get_matrix_last_y()))
         logging.info("FUTURE PRICE : {}".format(future_price))
         pv_after_commission = calculate_pv_after_commission(omega, self._last_omega, self._commission_rate)

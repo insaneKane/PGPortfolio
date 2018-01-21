@@ -41,7 +41,7 @@ class DataMatrices:
         type_list = get_type_list(feature_number)
         self.__features = type_list
         self.feature_number = feature_number
-        volume_forward = get_volume_forward(self.__end-start, test_portion, portion_reversed)
+        volume_forward = get_volume_forward(self.__end-start, test_portion, portion_reversed, new_data=new_data)
         #input("Start : {} End : {} Volume Forward : {}".format(datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M"), datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M"), volume_forward))
         self.__history_manager = gdm.HistoryManager(coin_number=coin_filter, end=self.__end,
                                                     volume_average_days=volume_average_days,
@@ -53,7 +53,9 @@ class DataMatrices:
                                                                          features=type_list, new_data=new_data)
         else:
             raise ValueError("market {} is not valid".format(market))
-        print("LAST : {}".format(self.__global_data.values[:, :, -1]))
+        #print("LAST : {}".format(self.__global_data.values[:, :, -1]))
+        t = self.__global_data.minor_axis[-1]
+        print("Last Time : {}".format(t))
         self.__period_length = period
         # portfolio vector memory, [time, assets]
         self.__PVM = pd.DataFrame(index=self.__global_data.minor_axis,
@@ -161,15 +163,15 @@ class DataMatrices:
         last_matrix = self.__global_data.values[:, :, -self._window_size:]
         last_w = self.__PVM.values[-2, :]
         t = self.__global_data.minor_axis[-1]
-        print("TIMES : {}".format(t))
+        #print("TIMES : {}".format(t))
         def setw(w):
             total_size = len(self.__global_data.values)
             indexs = np.array([index for index in range(total_size-window_size, total_size)])
             self.__PVM.iloc[indexs, :] = w
-
-        y = last_matrix[:, :, -1] / last_matrix[0, :, -2]
+        
+        y = last_matrix[:, :, -1] / last_matrix[0, :, -2] #TODO Possibly Wrong
         #input("first_shape_M : {} second_shape_M : {}".format( M[:, :, :, -1].shape, M[:, 0, None, :, -2].shape))
-        return {"X": last_matrix, "y": y, "last_w" : last_w, "setw": setw}
+        return {"X": last_matrix, "y": y, "last_w" : last_w}
 
 
     def next_batch(self):
@@ -185,18 +187,17 @@ class DataMatrices:
     def __pack_samples(self, indexs):
         indexs = np.array(indexs)
         last_w = self.__PVM.values[indexs-1, :]
-        #t = self.__global_data.minor_axis[indexs]
-        #print("TIMES : {}".format(t))
+		
         def setw(w):
-            #input("Indexes : {}".format(indexs))
             self.__PVM.iloc[indexs, :] = w
+
         M = [self.get_submatrix(index) for index in indexs]
         M = np.array(M)
-        #input("Shape : {}".format(M.shape))
+
         X = M[:, :, :, :-1]
-        #input("Shape : {}".format(X.shape))
+
         y = M[:, :, :, -1] / M[:, 0, None, :, -2]
-        #input("first_shape_M : {} second_shape_M : {}".format( M[:, :, :, -1].shape, M[:, 0, None, :, -2].shape))
+
         return {"X": X, "y": y, "last_w": last_w, "setw": setw}
 
     # volume in y is the volume in next access period

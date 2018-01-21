@@ -88,7 +88,8 @@ class Trader:
     def __trade_body(self):
         self._current_error_state = 'S000'
         starttime = time.time()
-        omega = self._agent.decide_by_history(self.generate_history_matrix(),
+        inputs = self.generate_history_matrix()
+        omega = self._agent.decide_by_history(inputs,
                                               self._last_omega.copy())
         logging.info("Last Omega : {}\nNew Omega : {}".format(self._last_omega, omega))
         self.trade_by_strategy(omega)
@@ -133,42 +134,48 @@ class Trader:
         y = []
         last_w = []
         w = []
+        #sleep_time = self.__period
         while flag:
             #time.sleep(30)
             try:
                 self._current_error_state = 'S000'
-                starttime = time.time()
+                starttime = int(time.time())
                 inputs = self.generate_realtime_history_matrix()
-                #omega = self._agent.decide_by_history(inputs, self._rolling_trader.last_info["last_w"].copy())
                 omega = self._agent.decide_by_history(inputs, self._last_omega.copy())
-                #logging.info("Last Omega : {}\nNew Omega : {}".format(self._last_omega, omega))
+
                 #TODO Sleep, Update, Get New Data and Y
                 print("WAIT_UNTIL_UPDATE")
-                time.sleep(self.__period - 120)
+                wait = self.__period - (starttime%self.__period)
+                #time.sleep(wait + 10)
                 print("UPDATING DATA")
                 self._rolling_trainer.update_data()
                 self.trade_by_online_strategy(omega)
-                X.append(inputs.copy())
-                y.append(omega.copy())
-                last_w.append(self._last_omega.copy())
+                X.append(inputs)
+                y.append(omega)
+                last_w.append(self._last_omega)
                 w.append(0)
                 #TODO NEED TO SET w somehow
                 if self._agent_type == "nn" and update_step_count == self._rolling_trainer.rolling_training_steps: 
-                    batch = np.array([X, y, last_w, w])
+                    #batch = np.array([np.array(X), np.array(y), np.array(last_w), np.array(w)])
+                    #input("X shape : {} y shape : {} last_w shape : {}".format(len(X), len(y), len(last_w)))
+                    batch = {"inputs" : np.array(X), "outputs" : np.array(y), "last_weights" : np.array(last_w), "ws" : np.array(w)}
+                    input("X shape : {} y shape : {} last_w shape : {}".format(batch["inputs"].shape, batch["outputs"].shape, batch["last_weights"].shape))
+                    self.online_rolling_train(batch)
                     X = []
                     y = []
                     last_w = []
                     w = []
-                    self.online_rolling_train(np.array(batch))
+                    update_step_count = 0
                 if not self.__class__.__name__=="BackTest":
                     print("Switch is REAL")
-                self._last_omega = omega.copy()
+                #self._last_omega = omega.copy()
                 logging.info('total assets are %3f BTC' % self._total_capital)
                 logging.debug("="*30)
-                #trading_time = time.time() - starttime
-                #if trading_time < self._period:
-                #    logging.info("sleep for %s seconds" % (self._period - trading_time))
+                trading_time = time.time() - starttime
+                if trading_time < self._period:
+                    logging.info("sleep for %s seconds" % (self._period - trading_time))
                 #sleep_time = self._period - trading_time
+                update_step_count += 1
             except KeyboardInterrupt:
                 self._agent.recycle()
                 self.finish_trading()

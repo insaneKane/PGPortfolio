@@ -19,7 +19,7 @@ class CoinList(object):
         coins = []
         volumes = []
         prices = []
-        print("Start Parsing : ")
+        #print("Start Parsing PIUUWW : {} , {}".format( datetime.fromtimestamp(end).strftime('%Y-%m-%d %H:%M'), volume_forward))
         logging.info("select coin online from %s to %s" % (datetime.fromtimestamp(end-(DAY*volume_average_days)-
                                                                                   volume_forward).
                                                            strftime('%Y-%m-%d %H:%M'),

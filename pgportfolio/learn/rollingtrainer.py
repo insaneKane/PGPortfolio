@@ -4,7 +4,7 @@ from __future__ import print_function
 from pgportfolio.learn.tradertrainer import TraderTrainer
 import logging
 import tflearn
-
+import numpy as np
 
 class RollingTrainer(TraderTrainer):
     def __init__(self, config, restore_dir=None, save_path=None, agent=None, device="cpu"):
@@ -63,6 +63,11 @@ class RollingTrainer(TraderTrainer):
             self.__rolling_logging()
 
     def online_rolling_train(self, batch_data):
-        x, y, last_w, w = batch_data[0]
+        x = batch_data["inputs"]
+        y = batch_data["outputs"] 
+        last_w = batch_data["last_weights"]
+        w = batch_data["ws"]
+        #input("X shape : {} y shape : {} last_w shape : {}".format(len(X), len(y), len(last_w)))
+        input("X shape : {} y shape : {} last_w shape : {}".format(x.shape, y.shape, last_w.shape))
         self._agent.train(x, y, last_w, w)
         self.__rolling_logging()
