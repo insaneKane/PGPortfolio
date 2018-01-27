@@ -114,6 +114,10 @@ backtest with rolling train(i.e. online learning in supervised learning)
 on the target model.
 * `--algo` could be either the name of traditional method or the index of training folder
 
+## Real Trading Option 
+* Type `python main.py --mode=backtest --algo=1 --device=gpu`
+* And use this format of this function :  execute_backtest(options.algo, config, online=True)
+
 ## Tradition Agent
 OLPS summary:
 
@@ -141,3 +145,6 @@ ons       1.000231      0.217216          1144              1360            731 
 ```
 * use `--format` arguments to change the format of the table,
  could be `raw` `html` `csv` or `latex`. The default one is raw.
+ 
+ 
+ 
