@@ -57,7 +57,7 @@ class TraderTrainer:
 
         self._matrix = DataMatrices.create_from_config(config)
         self.test_set = self._matrix.get_test_set()
-        self.last_info = self._matrix.get_last_info()
+        self.last_info = self._matrix.get_last_info() #For the keep track of real time processing
 
         if not config["training"]["fast_train"]:
             self.training_set = self._matrix.get_training_set()
@@ -81,6 +81,8 @@ class TraderTrainer:
         self.config['input']['end_date'] = now_ymdhm
         self._matrix = DataMatrices.create_from_config(self.config, _new_data=True)
         self.test_set = self._matrix.get_test_set()
+        self.last_info = self._matrix.get_last_info()
+        print(self.last_info)
 
     def _evaluate(self, set_name, *tensors):
         if set_name == "test":

@@ -27,7 +27,7 @@ class HistoryManager:
         self.__volume_forward = volume_forward
         self.__volume_average_days = volume_average_days
         self.__coins = None
-
+        self.__distance = 0
     @property
     def coins(self):
         return self.__coins
@@ -61,10 +61,8 @@ class HistoryManager:
             now = time.time()
             end = int(now)
             end = int(end - (end%period))
-        #print("end : {}".format(datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
-        #input("<-------------------PANEL --------------------->\n start : {} end : {}".format(
-        #      datetime.fromtimestamp(start).strftime("%Y-%m-%d %H:%M"), datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
-        #coins = self.select_coins(start=end - self.__volume_forward - self.__volume_average_days * DAY, end=end-self.__volume_forward)
+        print("LAST OBSERVATION TIME : {}".format(datetime.fromtimestamp(end).strftime("%Y-%m-%d %H:%M")))
+        
         coins = self.select_coins(start=end - self.__volume_forward - self.__volume_average_days * DAY, end=end-self.__volume_forward)
         self.__coins = coins
         for coin in coins:
@@ -79,11 +77,9 @@ class HistoryManager:
 
         time_index = pd.to_datetime(list(range(start, end+1, period)),unit='s')
         panel = pd.Panel(items=features, major_axis=coins, minor_axis=time_index, dtype=np.float32)
-        #print(panel.axes)
         connection = sqlite3.connect(DATABASE_DIR)
         try:
             for row_number, coin in enumerate(coins):
-                #input("row_number : {} coin : {}".format(row_number, coin))
                 for feature in features:
                     # NOTE: transform the start date to end date
                     if feature == "close":
@@ -183,15 +179,18 @@ class HistoryManager:
             cursor = connection.cursor()
             min_date = cursor.execute('SELECT MIN(date) FROM History WHERE coin=?;', (coin,)).fetchall()[0][0]
             max_date = cursor.execute('SELECT MAX(date) FROM History WHERE coin=?;', (coin,)).fetchall()[0][0]
-       
+            #print("Coin : {} min_date : {} max_date : {}".format(coin , datetime.fromtimestamp(min_date).strftime("%Y-%m-%d %H:%M"), datetime.fromtimestamp(max_date).strftime("%Y-%m-%d %H:%M")))
             if min_date==None or max_date==None:
+                #print("NONE CASE FILL FROM START TO END")
                 self.__fill_data(start, end, coin, cursor)
             else:
-                if max_date+10*self.__storage_period<end:
+                if max_date+self.__distance*self.__storage_period<end:
                     if not self._online:
                         raise Exception("Have to be online")
+                    #print("MAX DATE SMALLER THAN END")
                     self.__fill_data(max_date + self.__storage_period, end, coin, cursor)
                 if min_date>start and self._online:
+                    #print("MIN DATE BIGGER THAN MIN")
                     self.__fill_data(start, min_date - self.__storage_period-1, coin, cursor)
 
             # if there is no data

@@ -119,14 +119,13 @@ class Trader:
                     time.sleep(sleeptime)
             else:
                 while self._steps < self._total_steps:
-                    #print("step : {}".format(self.steps))
                     self.__trade_body()
         finally:
             if self._agent_type=="nn":
                 self._agent.recycle()
             self.finish_trading()
 
-    #TODO My implementation
+    #Realtime Trading Algorithm implementation
     def online_trading_with_nn(self):
         flag = True
         update_step_count = 0
@@ -134,32 +133,30 @@ class Trader:
         y = []
         last_w = []
         w = []
-        #sleep_time = self.__period
         while flag:
-            #time.sleep(30)
             try:
                 self._current_error_state = 'S000'
                 starttime = int(time.time())
                 inputs = self.generate_realtime_history_matrix()
-                omega = self._agent.decide_by_history(inputs, self._last_omega.copy())
+                omega = self._agent.decide_by_history(inputs, self._last_omega.copy()) # This is for prediction 
 
-                #TODO Sleep, Update, Get New Data and Y
+                #Sleep, Update, Get New Data and Y
                 print("WAIT_UNTIL_UPDATE")
-                wait = self.__period - (starttime%self.__period)
-                #time.sleep(wait + 10)
+                wait = self._period - (starttime % self._period)
+                time.sleep(wait + 10)
+
                 print("UPDATING DATA")
                 self._rolling_trainer.update_data()
                 self.trade_by_online_strategy(omega)
+                real_output = self.get_last_output()
+
                 X.append(inputs)
-                y.append(omega)
-                last_w.append(self._last_omega)
+                y.append(real_output)
+                last_w.append(self._last_omega[1:])
                 w.append(0)
-                #TODO NEED TO SET w somehow
+
                 if self._agent_type == "nn" and update_step_count == self._rolling_trainer.rolling_training_steps: 
-                    #batch = np.array([np.array(X), np.array(y), np.array(last_w), np.array(w)])
-                    #input("X shape : {} y shape : {} last_w shape : {}".format(len(X), len(y), len(last_w)))
                     batch = {"inputs" : np.array(X), "outputs" : np.array(y), "last_weights" : np.array(last_w), "ws" : np.array(w)}
-                    input("X shape : {} y shape : {} last_w shape : {}".format(batch["inputs"].shape, batch["outputs"].shape, batch["last_weights"].shape))
                     self.online_rolling_train(batch)
                     X = []
                     y = []
@@ -168,7 +165,6 @@ class Trader:
                     update_step_count = 0
                 if not self.__class__.__name__=="BackTest":
                     print("Switch is REAL")
-                #self._last_omega = omega.copy()
                 logging.info('total assets are %3f BTC' % self._total_capital)
                 logging.debug("="*30)
                 trading_time = time.time() - starttime

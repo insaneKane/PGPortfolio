@@ -59,6 +59,7 @@ class RollingTrainer(TraderTrainer):
             self._matrix.append_experience(online_w)
             for i in range(steps):
                 x, y, last_w, w = self.next_batch()
+                input("X shape : {} y shape : {} last_w shape : {}".format(x.shape, y.shape, last_w.shape))
                 self._agent.train(x, y, last_w, w)
             self.__rolling_logging()
 
@@ -67,7 +68,6 @@ class RollingTrainer(TraderTrainer):
         y = batch_data["outputs"] 
         last_w = batch_data["last_weights"]
         w = batch_data["ws"]
-        #input("X shape : {} y shape : {} last_w shape : {}".format(len(X), len(y), len(last_w)))
-        input("X shape : {} y shape : {} last_w shape : {}".format(x.shape, y.shape, last_w.shape))
+
         self._agent.train(x, y, last_w, w)
         self.__rolling_logging()

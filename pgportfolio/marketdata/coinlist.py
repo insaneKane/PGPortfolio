@@ -19,14 +19,12 @@ class CoinList(object):
         coins = []
         volumes = []
         prices = []
-        #print("Start Parsing PIUUWW : {} , {}".format( datetime.fromtimestamp(end).strftime('%Y-%m-%d %H:%M'), volume_forward))
         logging.info("select coin online from %s to %s" % (datetime.fromtimestamp(end-(DAY*volume_average_days)-
                                                                                   volume_forward).
                                                            strftime('%Y-%m-%d %H:%M'),
                                                            datetime.fromtimestamp(end-volume_forward).
                                                            strftime('%Y-%m-%d %H:%M')))
         for k, v in vol.items():
-            #input("K : {}\nV : {}\n ticker : {}".format(k, v, ticker[k]))
             if k.startswith("BTC_") or k.endswith("_BTC"):
                 pairs.append(k)
                 for c, val in v.items():
@@ -43,8 +41,6 @@ class CoinList(object):
                                                                days=volume_average_days,
                                                                forward=volume_forward))
                         else:
-                            #TODO Add New Data
-                            #now = time.time()
                             volumes.append(self.__get_total_volume(pair=k, global_end=end,
                                                                days=volume_average_days,
                                                                forward=volume_forward))
@@ -70,11 +66,9 @@ class CoinList(object):
     def __get_total_volume(self, pair, global_end, days, forward):
         start = global_end-(DAY*days)-forward
         end = global_end-forward
-        #print("start : {} end : {}".format(datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M'), datetime.fromtimestamp(end).strftime('%Y-%m-%d %H:%M')))
         chart = self.get_chart_until_success(pair=pair, period=DAY, start=start, end=end)
         result = 0
         for one_day in chart:
-            #input("dates :{} \ndata : {} ".format(datetime.fromtimestamp(one_day['date']).strftime('%Y-%m-%d %H:%M'),one_day))
             if pair.startswith("BTC_"):
                 result += one_day['volume']
             else:

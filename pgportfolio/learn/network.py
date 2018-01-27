@@ -27,7 +27,6 @@ class NeuralNetWork:
 
 
 class CNN(NeuralNetWork):
-    # input_shape (features, rows, columns)
     def __init__(self, feature_number, rows, columns, layers, device):
         NeuralNetWork.__init__(self, feature_number, rows, columns, layers, device)
 
